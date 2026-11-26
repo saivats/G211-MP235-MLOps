@@ -57,9 +57,28 @@ Exact duplicates were identified using `DataFrame.duplicated()`.
 
 ### 2.5 Stuck Sensor
 
-**Status:** Not observed.
+A stuck sensor was detected in the `humidity_pct` column.
 
-The temperature readings were examined in date order. No qualifying continuous run of identical readings was confirmed by the checks performed.
+Three continuous runs of identical humidity readings (96.0) were identified:
+
+| Chamber | Value | Start Date | End Date | Duration |
+|---|---:|---|---|---:|
+| Chamber 1 | 96.0 | 2026-04-26 | 2026-05-18 | 23 days |
+| Chamber 2 | 96.0 | 2026-05-03 | 2026-05-14 | 12 days |
+| Chamber 3 | 96.0 | 2026-04-26 | 2026-05-03 | 8 days |
+
+The longest run occurred in Chamber 1 and lasted 23 days.
+This indicates a potentially malfunctioning humidity sensor.
+
+### Stuck Humidity Sensor Treatment
+
+The confirmed stuck humidity readings were identified using chamber-specific date ranges.
+
+Affected readings were replaced with missing values and imputed using the corresponding chamber's median humidity.
+
+Legitimate humidity readings outside the identified date ranges were preserved.
+
+A synthetic unit test verifies this behaviour.
 
 ### 2.6 Target Typos
 

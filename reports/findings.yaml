@@ -27,10 +27,10 @@ data_issues:
     count: 27
 
   stuck_sensor:
-    present: false
-    column: null
-    start_date: null
-    end_date: null
+    present: true
+    column: "humidity_pct"
+    start_date: "2026-04-26"
+    end_date: "2026-05-18"
 
   target_typos:
     present: true
