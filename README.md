@@ -164,3 +164,14 @@ Each of the four members must fill [the individual Microsoft Form](https://forms
 **https://github.com/saivats/G211-MP235-MLOps**
 
 **Current repo status:** Planning/coordination initialized; data and implementation deliverables still require member-authored work.
+
+## PSI drift monitoring
+
+After the group-provided `data/raw/train.csv` and `data/raw/later.csv` are available and Pradyumna's `mp235.cleaning.clean_data` module is integrated, run the monitor from the repository root:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m mp235.monitor --train data/raw/train.csv --later data/raw/later.csv
+```
+
+The command cleans the training reference with the shared cleaning pipeline, then prints JSON containing 10-bin PSI for the six configured numeric predictors, the highest-PSI feature, and reference/current distribution summaries. PSI excludes missing and non-finite observations; their counts are included in each summary. Do not copy synthetic test metrics into `reports/findings.yaml`.
