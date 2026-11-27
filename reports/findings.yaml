@@ -1,0 +1,53 @@
+group_id: G211
+problem_id: MP235
+data_issues:
+  leaking_column:
+    present: false
+    column: null
+  unit_mixup:
+    present: false
+    column: null
+    group_value: null
+    factor: null
+  sentinel_value:
+    present: true
+    column: temp_set_c
+    value: -999
+    count: 36
+  duplicate_rows:
+    present: true
+    count: 27
+  stuck_sensor:
+    present: true
+    column: humidity_pct
+    start_date: '2026-04-26'
+    end_date: '2026-05-18'
+  target_typos:
+    present: true
+    count: 13
+  spelling_variants:
+    present: false
+    column: null
+    true_levels: null
+tracking:
+  experiment_name: G211-MP235
+  best_run_id: 283d70713b724f9e8a7f576e4cc45b1a
+  registered_model_name: MP235-spoilage
+  champion_version: 2
+monitoring:
+  psi:
+    storage_days: 5.899247282046766
+    temp_set_c: 0.036490316500103176
+    humidity_pct: 0.21031051501206263
+    power_cuts_hours: 0.019446998910117117
+    bag_weight_kg: 0.057659075279769954
+    door_openings_per_day: 0.06451177642898268
+  most_drifted_feature: storage_days
+  mae_by_group:
+    Chamber 1: 1.4784693386130157
+    Chamber 2: 4.050887936827959
+    Chamber 3: 1.735525102459016
+  worst_served_group: Chamber 2
+  mae_v1_on_check: 2.388276475694446
+  mae_v2_on_check: 1.0740151909722224
+  decision: promote

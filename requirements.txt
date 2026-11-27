@@ -2,11 +2,11 @@
 # Shared requirements configuration
 
 # Core testing framework
-pytest>=8.0.0
+pytest==9.2.0
 
 # Numerical, array, and data manipulation (Daksh - monitoring / PSI foundation)
-numpy>=1.24.0
-pandas>=2.0.0
+numpy==2.5.5
+pandas==3.1.1
 
 # Model training, serialization, and experiment tracking
 PyYAML==6.0.3
@@ -15,11 +15,11 @@ joblib==1.5.3
 mlflow==3.18.0
 
 # --- Outstanding Teammate Integration Requirements ---
-# API & Serving (Deepanshu - Day 1/2 handoff):
-# fastapi
-# uvicorn
-# pydantic
-# httpx (for TestClient)
+# API and serving
+fastapi==0.128.8
+uvicorn==0.39.0
+pydantic==2.13.5
+httpx==0.28.1
 
 # Data Engineering & DVC (Pradyumna - Day 1/2 handoff):
-# dvc
+dvc==3.67.1
