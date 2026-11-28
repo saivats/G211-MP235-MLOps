@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -13,6 +14,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 app = FastAPI(title="MP235 Cold Storage Spoilage API")
 logger = logging.getLogger("mp235.api")
+logger.setLevel(logging.INFO)
+logger.propagate = False
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
 # Exact feature order supplied by the ML lead

@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import app.main as main
@@ -92,23 +93,29 @@ def test_prediction_accepts_boundary_values(monkeypatch):
     assert response.json()["spoilage_pct"] == 42.5
 
 
-def test_prediction_writes_structured_json_log(monkeypatch, caplog):
+def test_prediction_writes_structured_json_log(monkeypatch):
     fake_model = FakeModel()
     monkeypatch.setattr(main, "load_model", lambda: fake_model)
 
-    with caplog.at_level(logging.INFO, logger="mp235.api"):
-        response = client.post("/predict", json=valid_payload())
+    log_stream = io.StringIO()
+    monkeypatch.setattr(
+        main.logger.handlers[0],
+        "stream",
+        log_stream
+    )
+
+    response = client.post("/predict", json=valid_payload())
 
     assert response.status_code == 200
 
-    log_records = [
-        record for record in caplog.records
-        if record.name == "mp235.api"
+    log_lines = [
+        line for line in log_stream.getvalue().splitlines()
+        if '"event":"prediction"' in line
     ]
 
-    assert len(log_records) == 1
+    assert len(log_lines) == 1
 
-    log_data = json.loads(log_records[0].message)
+    log_data = json.loads(log_lines[0])
 
     assert log_data["event"] == "prediction"
     assert log_data["spoilage_pct"] == 42.5
