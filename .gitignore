@@ -26,3 +26,4 @@ logs/
 
 # NOTE: The handbook explicitly requires committing mlflow.db,
 # models/model.joblib and predictions/holdout_predictions.csv.
+data/processed/

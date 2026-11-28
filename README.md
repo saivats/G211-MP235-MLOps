@@ -5,13 +5,13 @@
 **Faculty:** Dr. Saurabh Shrivastava  
 **Problem ID:** MP235  
 **Client scenario:** Guwahati Cold Chain Cooperative (fictional)  
-**Status:** In progress — the checklist below is a plan, **not** a statement of completed work.
+**Status:** Integration release under review in PR #10. The registered champion is version 2. The release includes the fitted pipeline and 250 holdout predictions.
 
 ## 1. Problem overview
 
 Build a reproducible MLOps pipeline to predict `spoilage_pct` (percentage of a stored lot spoiled) for potatoes, onions and apples. This is a **regression** task, evaluated by **mean absolute error (MAE)**. The full assignment includes data audit, versioning, cleaning, MLflow experiment tracking and registry, prediction API, Docker, GitHub Actions, Kubernetes, structured logging, drift, retraining and final holdout predictions.
 
-**Important:** Follow the unique group-provided `PROBLEM.md`, `STUDENT_HANDBOOK.md` and starter `findings.yaml` locally. Do not publish the original dataset in ordinary Git commits.
+**Important:** Follow the unique group-provided `PROBLEM.md`, `STUDENT_HANDBOOK.md` and starter `findings.yaml` locally. Keep train.csv and later.csv local and track their DVC pointers. Section 5 lists the unlabeled holdout input at `data/raw/holdout_features.csv`.
 
 ## 2. Group G211 — distinct primary responsibilities
 
@@ -135,7 +135,7 @@ reports/findings.yaml            # measured values, no placeholders at submissio
 predictions/holdout_predictions.csv
 ```
 
-This tree lists **required deliverables**, not files already present.
+The tree above includes the required local holdout input. Restore the original unlabeled file from the faculty ZIP to `data/raw/holdout_features.csv`; the public checkout includes the prediction output.
 
 ## 6. Project-specific acceptance criteria
 
@@ -153,7 +153,7 @@ This tree lists **required deliverables**, not files already present.
 1. Work in topic branches such as `data/audit`, `model/training`, `api/service`, `ops/ci`. Use pull requests for review and integrate to `main`.
 2. Every member must be added as a collaborator and commit from **their own account**. Never share credentials, manufacture contribution history, or imply another member did work that they did not.
 3. Commit meaningful increments with tests/documentation. One daily commit is an **optional coordination goal**, not an official minimum.
-4. Do not publish the group-specific supplied CSV files in regular Git history. Follow the faculty's DVC instructions and project sharing restrictions.
+4. Restore the supplied CSVs locally from the G211 ZIP. Only DVC pointers for the labeled inputs are tracked.
 5. Complete this coursework yourselves. The handbook permits AI for explanation/debugging, not as a substitute for implementing and understanding your work; be prepared to explain and modify every contribution in the viva.
 6. Never invent experiment metrics, MLflow run IDs, CI status or `findings.yaml` values.
 
@@ -163,4 +163,44 @@ Each of the four members must fill [the individual Microsoft Form](https://forms
 
 **https://github.com/saivats/G211-MP235-MLOps**
 
-**Current repo status:** Planning/coordination initialized; data and implementation deliverables still require member-authored work.
+## Reproduce or verify the release
+
+Use Python 3.12 from the repository root. The following PowerShell commands install the pinned dependencies, run the synthetic tests, and serve the committed champion.
+
+```powershell
+py -3.12 -m venv .venv
+$python = (Resolve-Path .venv\Scripts\python.exe).Path
+& $python -m pip install -r requirements.txt
+& $python -m pytest -q
+& $python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000/docs` to test the eight-field request. The API loads `models/model.joblib`. Both registered versions load through the root `mlflow.db` and the tracked relative paths under `models/registry/`. The Docker build and HTTP smoke commands are in `docs/api.md` and `.github/workflows/ci.yml`.
+
+**Rebuild from original data.** Extract the faculty ZIP locally, keeping the CSV bytes intact. The release runner requires a fresh output directory. In a separate PowerShell session at the repository root, set `$sourceData` to the extracted folder containing the CSVs. The commands below copy only the source and configuration needed for a rebuild. All new runs, findings and artifacts are written under a new temporary directory.
+
+```powershell
+$sourceData = Read-Host "Path to the extracted faculty data folder"
+$python = (Resolve-Path .venv\Scripts\python.exe).Path
+$work = Join-Path $env:TEMP ("mp235-" + [guid]::NewGuid())
+New-Item -ItemType Directory -Path $work | Out-Null
+New-Item -ItemType Directory -Path "$work\data\raw","$work\reports" -Force | Out-Null
+Copy-Item src $work -Recurse
+Copy-Item params.yaml,requirements.txt $work
+Copy-Item reports\findings.yaml "$work\reports"
+Copy-Item "$sourceData\holdout_features.csv" "$work\data\raw"
+Copy-Item "$sourceData\train.csv","$sourceData\later.csv" "$work\data\raw"
+Push-Location $work
+try {
+    $env:PYTHONPATH = "src"
+    $env:MLFLOW_DISABLE_TELEMETRY = "true"
+    & $python -m mp235.run_release
+    if ($LASTEXITCODE) { throw "Release rebuild failed" }
+    & $python -m mp235.monitor --train data/raw/train.csv --later data/raw/later.csv
+    if ($LASTEXITCODE) { throw "PSI verification failed" }
+} finally {
+    Pop-Location
+}
+```
+
+Compare the rebuilt holdout CSV and monitoring values with the committed results. MLflow generates new run IDs on each rebuild. The distributed ZIP supplies the original inputs; a shared DVC remote is optional. The DVC pointers record their original checksums and sizes.

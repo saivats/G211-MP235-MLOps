@@ -7,16 +7,22 @@ requiring private training CSVs.
 from __future__ import annotations
 
 import json
+import sys
+import types
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from mp235.monitor import (
+    NUM_BINS,
     NUMERIC_PREDICTORS,
+    build_monitoring_report,
     calculate_dataset_psi,
     calculate_feature_psi,
     compute_bin_edges,
     find_most_drifted_feature,
+    main,
 )
 from mp235.structured_logging import get_prediction_logger, log_prediction
 
@@ -25,14 +31,13 @@ from mp235.structured_logging import get_prediction_logger, log_prediction
 
 
 def test_psi_identical_distributions_near_zero() -> None:
-    """Nearly identical distributions should yield PSI very close to 0."""
+    """Identical input values have zero PSI under reference-derived bins."""
     rng = np.random.default_rng(42)
     ref = pd.Series(rng.normal(loc=50.0, scale=10.0, size=2000))
-    cur = pd.Series(rng.normal(loc=50.0, scale=10.0, size=2000))
+    cur = ref.copy()
 
     psi = calculate_feature_psi(ref, cur, num_bins=10)
-    assert isinstance(psi, float)
-    assert 0.0 <= psi < 0.05, f"Expected PSI near 0 for identical distributions, got {psi}"
+    assert psi == 0.0
 
 
 def test_psi_shifted_distribution_positive() -> None:
@@ -71,6 +76,40 @@ def test_psi_constant_feature_handling() -> None:
     assert psi_shifted >= 0.0
 
 
+def test_reference_bins_are_ten_for_discrete_and_constant_data() -> None:
+    discrete_edges = compute_bin_edges(pd.Series([0, 0, 1, 1, 2, 2]), NUM_BINS)
+    constant_edges = compute_bin_edges(pd.Series([4.0] * 20), NUM_BINS)
+
+    assert len(discrete_edges) == NUM_BINS + 1
+    assert len(constant_edges) == NUM_BINS + 1
+    assert np.all(np.diff(discrete_edges) > 0)
+    assert np.all(np.diff(constant_edges) > 0)
+
+
+def test_empty_or_invalid_distributions_fail_explicitly() -> None:
+    with pytest.raises(ValueError, match="reference must contain"):
+        calculate_feature_psi(pd.Series([np.nan, np.inf]), pd.Series([1.0]))
+
+    with pytest.raises(ValueError, match="current must contain"):
+        calculate_feature_psi(pd.Series([1.0]), pd.Series([np.nan, -np.inf]))
+
+
+def test_psi_result_is_reproducible() -> None:
+    rng = np.random.default_rng(2714)
+    reference = pd.Series(rng.normal(10, 2, size=600))
+    current = pd.Series(rng.normal(12, 3, size=300))
+
+    first = calculate_feature_psi(reference, current)
+    second = calculate_feature_psi(reference, current)
+
+    assert first == second
+
+
+def test_most_drifted_feature_rejects_non_finite_scores() -> None:
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        find_most_drifted_feature({"storage_days": float("nan")})
+
+
 def test_all_six_numeric_features_processed() -> None:
     """All six configured numeric predictors must be evaluated and identified correctly."""
     rng = np.random.default_rng(123)
@@ -107,6 +146,61 @@ def test_all_six_numeric_features_processed() -> None:
     most_drifted_feat, max_psi = find_most_drifted_feature(results)
     assert most_drifted_feat == "power_cuts_hours"
     assert max_psi == results["power_cuts_hours"]
+
+
+def test_monitoring_report_contains_measured_summaries_and_maximum() -> None:
+    rng = np.random.default_rng(77)
+    reference = pd.DataFrame({
+        feature: rng.normal(0.0, 1.0, size=500)
+        for feature in NUMERIC_PREDICTORS
+    })
+    current = reference.copy()
+    current["humidity_pct"] += 8.0
+    reference.loc[0, "storage_days"] = np.nan
+
+    report = build_monitoring_report(reference, current)
+
+    assert report["num_bins"] == NUM_BINS
+    assert set(report["psi"]) == set(NUMERIC_PREDICTORS)
+    assert report["most_drifted_feature"]["feature"] == "humidity_pct"
+    assert report["most_drifted_feature"]["psi"] == report["psi"]["humidity_pct"]
+    assert report["distributions"]["storage_days"]["reference"]["count"] == 499
+    assert (
+        report["distributions"]["storage_days"]["reference"]
+        ["missing_or_non_finite_count"] == 1
+    )
+
+
+def test_cli_cleans_reference_and_prints_json_report(tmp_path, monkeypatch, capsys) -> None:
+    rng = np.random.default_rng(9)
+    train = pd.DataFrame({
+        feature: rng.normal(0.0, 1.0, size=100)
+        for feature in NUMERIC_PREDICTORS
+    })
+    later = train.copy()
+    later["power_cuts_hours"] += 10.0
+    train_path = tmp_path / "train.csv"
+    later_path = tmp_path / "later.csv"
+    train.to_csv(train_path, index=False)
+    later.to_csv(later_path, index=False)
+
+    cleaning_module = types.ModuleType("mp235.cleaning")
+    cleaned = []
+
+    def clean_data(frame):
+        cleaned.append(True)
+        return frame.copy()
+
+    cleaning_module.clean_data = clean_data
+    monkeypatch.setitem(sys.modules, "mp235.cleaning", cleaning_module)
+
+    result = main(["--train", str(train_path), "--later", str(later_path)])
+    output = json.loads(capsys.readouterr().out)
+
+    assert result == 0
+    assert cleaned == [True]
+    assert output["num_bins"] == NUM_BINS
+    assert output["most_drifted_feature"]["feature"] == "power_cuts_hours"
 
 
 # --- Structured Logging Tests ---

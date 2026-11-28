@@ -13,3 +13,7 @@ features:
 model:
   random_state: 42
   n_estimators: 8
+
+experiments:
+  validation_start: "2026-06-01"
+  tree_counts: [64, 128, 256]
