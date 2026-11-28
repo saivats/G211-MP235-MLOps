@@ -30,7 +30,7 @@ jobs:
           docker build -t mp235-api:1.0 .
           docker run -d --name mp235-smoke -p 127.0.0.1:18000:8000 mp235-api:1.0
           trap 'docker logs mp235-smoke; docker rm -f mp235-smoke' EXIT
-          curl -fsS --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:18000/health | jq -e '.status == "ok"'
+          curl -fsS --retry 30 --retry-all-errors --retry-delay 1 http://127.0.0.1:18000/health | jq -e '.status == "ok"'
           python - <<'PY'
           import json
           import urllib.request
