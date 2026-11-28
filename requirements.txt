@@ -1,9 +1,20 @@
+# Group G211 - MP235 (Cold Storage Spoilage Prediction)
+
+# Core API and serving
 fastapi==0.128.8
 uvicorn==0.39.0
 pydantic==2.13.5
-pytest==8.4.2
+
+# Testing
+pytest>=8.0.0
 httpx==0.28.1
+
+# Data manipulation
+numpy>=1.24.0
 pandas==2.3.3
+
+# Model training and serialization
+PyYAML==6.0.3
 scikit-learn==1.8.0
 joblib==1.5.3
-
+mlflow==3.18.0
