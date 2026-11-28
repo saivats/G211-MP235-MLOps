@@ -1,0 +1,15 @@
+features:
+  numeric:
+    - storage_days
+    - temp_set_c
+    - humidity_pct
+    - power_cuts_hours
+    - bag_weight_kg
+    - door_openings_per_day
+  categorical:
+    - crop
+    - chamber
+
+model:
+  random_state: 42
+  n_estimators: 8
