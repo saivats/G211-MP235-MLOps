@@ -12,12 +12,21 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class APIPredictionFormatter(logging.Formatter):
+    """Write the API's prediction fields as one JSON object per line."""
+
+    def format(self, record):
+        return json.dumps(record.prediction_fields, separators=(",", ":"), allow_nan=False)
+
+
 app = FastAPI(title="MP235 Cold Storage Spoilage API")
 logger = logging.getLogger("mp235.api")
 logger.setLevel(logging.INFO)
 logger.propagate = False
 if not logger.handlers:
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(APIPredictionFormatter())
+    logger.addHandler(handler)
 
 
 # Exact feature order supplied by the ML lead
@@ -106,9 +115,7 @@ def predict(request: PredictionRequest):
             "spoilage_pct": spoilage_pct
         }
 
-        logger.info(
-            json.dumps(log_record, separators=(",", ":"), allow_nan=False)
-        )
+        logger.info("prediction", extra={"prediction_fields": log_record})
 
     except Exception as exc:
         raise HTTPException(

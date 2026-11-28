@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import subprocess
 import sys
@@ -110,5 +111,5 @@ assert response.status_code == 200
     lines = result.stdout.strip().splitlines()
     assert len(lines) == 1
     record = json.loads(lines[0])
-    assert record["event"] == "prediction"
-    assert record["spoilage_pct"] == 42.5
+    assert datetime.fromisoformat(record.pop("timestamp")).utcoffset().total_seconds() == 0
+    assert record == {**valid_payload(), "event": "prediction", "spoilage_pct": 42.5}
